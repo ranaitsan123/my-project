@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AcademiX | Formations</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        body { background-color: #f4f7f6; font-family: 'Segoe UI', sans-serif; }
+        .navbar { background: #2c3e50; margin-bottom: 30px; }
+        .navbar-brand, .nav-link { color: white !important; }
+        .card { border: none; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .btn-add { background-color: #27ae60; color: white; border: none; font-weight: 600; }
+        .badge-module { background-color: #e8f4fd; color: #2980b9; padding: 5px 10px; border-radius: 5px; font-size: 0.85em; margin: 2px; display: inline-block; border: 1px solid #b3d7ff; }
+    
+        /* Couleur identique à la navbar (#2c3e50) */
+.footer-custom {
+    background-color: #2c3e50;
+    border-top: 3px solid #f39c12; /* Petit trait orange comme le menu actif */
+}
+
+/* Force le footer à rester en bas si la liste est courte */
+html, body {
+    height: 100%;
+}
+body {
+    display: flex;
+    flex-direction: column;
+}
+.container {
+    flex: 1 0 auto;
+}
+footer {
+    flex-shrink: 0;
+}
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="#"><i class="fas fa-university"></i> AcademiX</a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link active fw-bold text-warning" href="formations.html">Formations</a>
+                <a class="nav-link" href="etudiants.html">Étudiants</a>
+                <a class="nav-link" href="inscriptions.html">Inscriptions</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="fw-bold text-secondary">Catalogue des Formations</h2>
+            <button class="btn btn-add shadow-sm" data-bs-toggle="modal" data-bs-target="#courseModal" onclick="prepareAdd()">
+                <i class="fas fa-plus-circle"></i> Nouvelle Formation
+            </button>
+        </div>
+
+        <div class="stats-card">
+   <h3>Nombre total de formations : <span id="course-count">0</span></h3>
+</div>
+<div class="d-flex justify-content-between mb-3">
+    <input type="text" id="searchBar" onkeyup="doSearch()" placeholder="Rechercher une formation..." class="form-control" style="width: 300px;">
+    
+    
+</div>
+        <div class="card p-3">
+            <table class="table table-hover align-middle" id="coursesTable">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Nom</th>
+                        <th>Capacité</th>
+                        <th>Détails & Modules</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="modal fade" id="courseModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fw-bold" id="formTitle">Détails Formation</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="courseForm">
+                    <div class="modal-body p-4">
+                        <input type="hidden" id="courseId">
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <label class="form-label fw-bold small text-uppercase">Nom de la formation</label>
+                                <input type="text" class="form-control" id="courseName" placeholder="Ex: Master ISI" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold small text-uppercase">Capacité Max</label>
+                                <input type="number" class="form-control" id="maxStudents" placeholder="Ex: 50" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-uppercase">Prérequis</label>
+                            <textarea class="form-control" id="prerequisites" rows="2" placeholder="Ex: Avoir validé le semestre 1..."></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-uppercase">Modules de cours</label>
+                            <div class="input-group mb-2">
+                                <input type="text" id="moduleInput" class="form-control" placeholder="Nom du module (ex: Java, Cloud...)">
+                                <button type="button" class="btn btn-primary" onclick="addModule()">Ajouter</button>
+                            </div>
+                            <div id="modulesList" class="p-3 border rounded bg-light" style="min-height: 50px;">
+                                </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-success px-4" id="submitBtn">Enregistrer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    const apiUrl = "http://localhost:8082/formations";
+    const courseModal = new bootstrap.Modal(document.getElementById('courseModal'));
+    let modulesArray = [];
+
+    // --- NOUVELLE FONCTION POUR L'AFFICHAGE ET LE COMPTEUR ---
+    function remplirTableauFormations(courses) {
+        const tbody = document.querySelector("#coursesTable tbody");
+        const countElement = document.getElementById('course-count');
+        
+        tbody.innerHTML = "";
+        countElement.innerText = courses.length; // Mise à jour du compteur
+
+        courses.forEach(c => {
+            const modulesHtml = (c.modules && Array.isArray(c.modules) && c.modules.length > 0) 
+                ? c.modules.map(m => `<span class="badge bg-secondary me-1">${m.name}</span>`).join('') 
+                : '<span class="text-muted small">Aucun module</span>';
+            
+            tbody.innerHTML += `
+                <tr>
+                    <td class="fw-bold text-primary">${c.name}</td>
+                    <td><span class="badge bg-info text-dark">${c.maxStudents} places</span></td>
+                    <td>
+                        <div>${modulesHtml}</div>
+                        <div class="mt-1 small text-muted"><strong>Prérequis:</strong> ${c.prerequisites || 'Aucun'}</div>
+                    </td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-outline-warning me-1" onclick="editCourse(${c.id})"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteCourse(${c.id})"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>`;
+        });
+    }
+
+    // 1. CHARGER LA LISTE (Utilise maintenant remplirTableauFormations)
+    async function loadCourses() {
+        try {
+            const res = await fetch(apiUrl);
+            const courses = await res.json();
+            remplirTableauFormations(courses);
+        } catch (e) { console.error("Erreur de chargement", e); }
+    }
+
+    // --- NOUVELLE FONCTION DE RECHERCHE ---
+    async function doSearch() {
+        const motCle = document.getElementById('searchBar').value;
+        const url = motCle === "" ? apiUrl : `${apiUrl}/search?keyword=${motCle}`;
+
+        try {
+            const res = await fetch(url);
+            const data = await res.json();
+            remplirTableauFormations(data); 
+        } catch (error) {
+            console.error("Erreur de recherche:", error);
+        }
+    }
+
+    // 2. GESTION DES MODULES DANS LE FORMULAIRE (Inchangé)
+    function addModule() {
+        const input = document.getElementById('moduleInput');
+        const val = input.value.trim();
+        if(val) {
+            modulesArray.push({ name: val }); 
+            renderModules();
+            input.value = "";
+        }
+    }
+
+    function renderModules() {
+        const container = document.getElementById('modulesList');
+        container.innerHTML = modulesArray.map((m, i) => `
+            <span class="badge bg-secondary p-2 me-1">${m.name} <i class="fas fa-times text-danger ms-2" style="cursor:pointer" onclick="removeModule(${i})"></i></span>
+        `).join('');
+    }
+
+    function removeModule(i) {
+        modulesArray.splice(i, 1);
+        renderModules();
+    }
+
+    // 3. ENREGISTRER (AJOUTER OU MODIFIER - Inchangé)
+    document.getElementById("courseForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const id = document.getElementById("courseId").value;
+        const data = {
+            name: document.getElementById("courseName").value,
+            maxStudents: parseInt(document.getElementById("maxStudents").value),
+            prerequisites: document.getElementById("prerequisites").value,
+            modules: modulesArray
+        };
+        const method = id ? "PUT" : "POST";
+        const url = id ? `${apiUrl}/${id}` : apiUrl;
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+            if(response.ok) {
+                courseModal.hide();
+                loadCourses();
+            } else { alert("Erreur lors de la sauvegarde."); }
+        } catch (e) { alert("Erreur de connexion au serveur."); }
+    });
+
+    // 4. MODIFIER (Inchangé)
+    async function editCourse(id) {
+        const res = await fetch(`${apiUrl}/${id}`);
+        const c = await res.json();
+        document.getElementById("courseId").value = c.id;
+        document.getElementById("courseName").value = c.name;
+        document.getElementById("maxStudents").value = c.maxStudents;
+        document.getElementById("prerequisites").value = c.prerequisites || "";
+        modulesArray = c.modules || [];
+        renderModules();
+        document.getElementById("formTitle").textContent = "Modifier la formation";
+        courseModal.show();
+    }
+
+    // 5. SUPPRIMER (Inchangé)
+    async function deleteCourse(id) {
+    if(confirm("Supprimer cette formation ?")) {
+        try {
+            const response = await fetch(`${apiUrl}/${id}`, { 
+                method: "DELETE" 
+            });
+            
+            if(response.ok) {
+                loadCourses(); // Recharge le tableau après suppression
+            } else {
+                alert("Erreur lors de la suppression. Vérifiez si des modules empêchent la suppression.");
+            }
+        } catch (e) {
+            console.error("Erreur de connexion", e);
+        }
+    }
+}
+
+    function prepareAdd() {
+        document.getElementById("courseForm").reset();
+        document.getElementById("courseId").value = "";
+        modulesArray = [];
+        renderModules();
+        document.getElementById("formTitle").textContent = "Nouvelle Formation";
+    }
+
+    loadCourses();
+</script>
+<footer class="footer-custom text-white text-center py-4 mt-5">
+    <div class="container">
+        <p class="mb-0 fw-bold">Plateforme de gestion des inscriptions académiques</p>
+        <small class="opacity-75">© 2026 AcademiX </small>
+    </div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion des Formations</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { padding: 20px; background-color: #f8f9fa; }
+        h1 { margin-bottom: 20px; }
+        .table-container { margin-top: 20px; }
+        .form-container { margin-top: 40px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1 class="text-center">Gestion des Formations</h1>
+
+    <!-- Tableau des formations -->
+    <div class="table-container">
+        <table class="table table-bordered table-striped" id="formationsTable">
+            <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Nom</th>
+                <th>Max Étudiants</th>
+                <th>Prérequis</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            <!-- Les formations seront ajoutées ici dynamiquement -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Formulaire ajout / modification -->
+    <div class="form-container">
+        <h3 id="formTitle">Ajouter une formation</h3>
+        <form id="formationForm">
+            <input type="hidden" id="formationId">
+            <div class="mb-3">
+                <label for="name" class="form-label">Nom de la formation</label>
+                <input type="text" class="form-control" id="name" required>
+            </div>
+            <div class="mb-3">
+                <label for="maxStudents" class="form-label">Nombre maximum d'étudiants</label>
+                <input type="number" class="form-control" id="maxStudents" required>
+            </div>
+            <div class="mb-3">
+                <label for="prerequisites" class="form-label">Prérequis</label>
+                <input type="text" class="form-control" id="prerequisites">
+            </div>
+            <button type="submit" class="btn btn-primary" id="submitBtn">Ajouter</button>
+            <button type="button" class="btn btn-secondary" id="cancelBtn">Annuler</button>
+        </form>
+    </div>
+    <!-- Formulaire ajout / modification Module -->
+<div class="form-container">
+    <h3 id="moduleFormTitle">Ajouter un module</h3>
+    <form id="moduleForm">
+        <input type="hidden" id="moduleId">
+        <input type="hidden" id="moduleFormationId"> <!-- pour savoir à quelle formation ce module appartient -->
+        <div class="mb-3">
+            <label for="moduleName" class="form-label">Nom du module</label>
+            <input type="text" class="form-control" id="moduleName" required>
+        </div>
+        <div class="mb-3">
+            <label for="moduleMaxStudents" class="form-label">Nombre maximum d'étudiants</label>
+            <input type="number" class="form-control" id="moduleMaxStudents" required>
+        </div>
+        <div class="mb-3">
+            <label for="modulePrerequisites" class="form-label">Prérequis</label>
+            <input type="text" class="form-control" id="modulePrerequisites">
+        </div>
+        <button type="submit" class="btn btn-primary" id="moduleSubmitBtn">Ajouter</button>
+        <button type="button" class="btn btn-secondary" id="moduleCancelBtn">Annuler</button>
+    </form>
+</div>
+
+</div>
+
+<script>
+    const apiUrl = "http://localhost:8082/formations"; // Assure-toi que le port correspond à ton backend
+
+    // Charger toutes les formations
+    async function loadFormations() {
+        try {
+            const res = await fetch(apiUrl);
+            const formations = await res.json();
+            const tbody = document.querySelector("#formationsTable tbody");
+            tbody.innerHTML = "";
+            formations.forEach(f => {
+    tbody.innerHTML += `
+        <tr id="formationRow${f.id}">
+            <td>${f.id}</td>
+            <td>${f.name}</td>
+            <td>${f.maxStudents}</td>
+            <td>${f.prerequisites}</td>
+            <td>
+    <button class="btn btn-sm btn-primary" onclick="showModules(${f.id}, '${f.name}')">
+        Modules
+    </button>
+    <button class="btn btn-sm btn-warning" onclick="editFormation(${f.id})">
+        Modifier
+    </button>
+    <button class="btn btn-sm btn-danger" onclick="deleteFormation(${f.id})">
+        Supprimer
+    </button>
+</td>
+
+            <td class="modulesCell"></td> <!-- Ici les modules apparaîtront -->
+        </tr>
+    `;
+    loadModules(f.id); // charge les modules pour chaque formation
+});
+
+        } catch (err) {
+            console.error("Erreur lors du chargement des formations :", err);
+        }
+    }
+
+    // Ajouter ou modifier une formation
+    document.getElementById("formationForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const id = document.getElementById("formationId").value;
+        const data = {
+            name: document.getElementById("name").value,
+            maxStudents: parseInt(document.getElementById("maxStudents").value),
+            prerequisites: document.getElementById("prerequisites").value
+        };
+
+        try {
+            if (id) {
+                // Modifier
+                await fetch(`${apiUrl}/${id}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(data)
+                });
+            } else {
+                // Ajouter
+                await fetch(apiUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(data)
+                });
+            }
+
+            resetForm();
+            loadFormations();
+        } catch (err) {
+            console.error("Erreur lors de l'ajout/modification :", err);
+        }
+    });
+
+    // Supprimer une formation
+    async function deleteFormation(id) {
+        if (confirm("Voulez-vous vraiment supprimer cette formation ?")) {
+            try {
+                await fetch(`${apiUrl}/${id}`, { method: "DELETE" });
+                loadFormations();
+            } catch (err) {
+                console.error("Erreur lors de la suppression :", err);
+            }
+        }
+    }
+
+    // Modifier : pré-remplir le formulaire
+    async function editFormation(id) {
+        try {
+            const res = await fetch(`${apiUrl}/${id}`);
+            const f = await res.json();
+            document.getElementById("formationId").value = f.id;
+            document.getElementById("name").value = f.name;
+            document.getElementById("maxStudents").value = f.maxStudents;
+            document.getElementById("prerequisites").value = f.prerequisites;
+            document.getElementById("formTitle").textContent = "Modifier une formation";
+            document.getElementById("submitBtn").textContent = "Modifier";
+        } catch (err) {
+            console.error("Erreur lors du chargement de la formation :", err);
+        }
+    }
+
+    // Réinitialiser le formulaire
+    document.getElementById("cancelBtn").addEventListener("click", resetForm);
+    function resetForm() {
+        document.getElementById("formationId").value = "";
+        document.getElementById("name").value = "";
+        document.getElementById("maxStudents").value = "";
+        document.getElementById("prerequisites").value = "";
+        document.getElementById("formTitle").textContent = "Ajouter une formation";
+        document.getElementById("submitBtn").textContent = "Ajouter";
+    }
+
+    // Initialiser
+    loadFormations();
+
+    const apiModuleUrl = "http://localhost:8082/modules";
+
+// Afficher les modules d’une formation
+async function loadModules(formationId) {
+    try {
+        const res = await fetch(`${apiModuleUrl}/formation/${formationId}`);
+        const modules = await res.json();
+
+        let modulesHtml = "<h5>Modules :</h5><ul class='list-group'>";
+        modules.forEach(m => {
+            modulesHtml += `<li class='list-group-item'>
+                ${m.name} (Max: ${m.maxStudents}, Prérequis: ${m.prerequisites})
+            </li>`;
+        });
+        modulesHtml += "</ul>";
+
+        const row = document.querySelector(`#formationRow${formationId} td.modulesCell`);
+        if(row) row.innerHTML = modulesHtml;
+    } catch (err) {
+        console.error("Erreur lors du chargement des modules :", err);
+    }
+}
+
+// Préparer le formulaire pour ajouter un module
+function prepareAddModule(formationId) {
+    document.getElementById("moduleFormTitle").textContent = "Ajouter un module";
+    document.getElementById("moduleSubmitBtn").textContent = "Ajouter";
+    document.getElementById("moduleId").value = "";
+    document.getElementById("moduleName").value = "";
+    document.getElementById("moduleMaxStudents").value = "";
+    document.getElementById("modulePrerequisites").value = "";
+    document.getElementById("moduleFormationId").value = formationId;
+    window.scrollTo(0, document.body.scrollHeight);
+}
+
+// Soumettre le formulaire module
+document.getElementById("moduleForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const formationId = document.getElementById("moduleFormationId").value;
+    const data = {
+        name: document.getElementById("moduleName").value,
+        maxStudents: parseInt(document.getElementById("moduleMaxStudents").value),
+        prerequisites: document.getElementById("modulePrerequisites").value
+    };
+
+    try {
+        await fetch(`${apiModuleUrl}/formation/${formationId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data)
+        });
+
+        resetModuleForm();
+        loadModules(formationId);
+    } catch (err) {
+        console.error("Erreur lors de l'ajout du module :", err);
+    }
+});
+
+document.getElementById("moduleCancelBtn").addEventListener("click", resetModuleForm);
+
+function resetModuleForm() {
+    document.getElementById("moduleFormTitle").textContent = "Ajouter un module";
+    document.getElementById("moduleSubmitBtn").textContent = "Ajouter";
+    document.getElementById("moduleId").value = "";
+    document.getElementById("moduleName").value = "";
+    document.getElementById("moduleMaxStudents").value = "";
+    document.getElementById("modulePrerequisites").value = "";
+    document.getElementById("moduleFormationId").value = "";
+}
+
+function showModules(formationId, formationName) {
+    alert("Modules de la formation : " + formationName + " (ID = " + formationId + ")");
+}
+
+let currentFormationId = null;
+
+function openModulesModal(formationId, formationName) {
+    currentFormationId = formationId;
+    document.getElementById('modulesModalLabel').textContent = `Modules de ${formationName}`;
+    resetModalModuleForm();
+    loadModulesForModal(formationId);
+    const modal = new bootstrap.Modal(document.getElementById('modulesModal'));
+    modal.show();
+}
+
+
+</script>
+<!-- Modal Gestion des Modules -->
+<div class="modal fade" id="modulesModal" tabindex="-1" aria-labelledby="modulesModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modulesModalLabel">Modules de la formation</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Liste des modules -->
+        <ul class="list-group" id="modulesList"></ul>
+
+        <hr>
+
+        <!-- Formulaire ajout/modification module -->
+        <h5 id="modalModuleFormTitle">Ajouter un module</h5>
+        <form id="modalModuleForm">
+          <input type="hidden" id="modalModuleId">
+          <div class="mb-3">
+            <label for="modalModuleName" class="form-label">Nom du module</label>
+            <input type="text" class="form-control" id="modalModuleName" required>
+          </div>
+          <div class="mb-3">
+            <label for="modalModuleMaxStudents" class="form-label">Nombre max d'étudiants</label>
+            <input type="number" class="form-control" id="modalModuleMaxStudents" required>
+          </div>
+          <div class="mb-3">
+            <label for="modalModulePrerequisites" class="form-label">Prérequis</label>
+            <input type="text" class="form-control" id="modalModulePrerequisites">
+          </div>
+          <button type="submit" class="btn btn-primary" id="modalModuleSubmitBtn">Ajouter</button>
+          <button type="button" class="btn btn-secondary" id="modalModuleCancelBtn">Annuler</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

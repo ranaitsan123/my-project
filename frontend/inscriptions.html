@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AcademiX | Inscriptions</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        body { background-color: #f4f7f6; font-family: 'Segoe UI', sans-serif; }
+        .navbar { background: #2c3e50; margin-bottom: 30px; }
+        .navbar-brand, .nav-link { color: white !important; }
+        .card { border: none; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .btn-add { background-color: #27ae60; color: white; border: none; font-weight: 600; }
+        /* Style spécifique pour les IDs et dates dans le tableau */
+        .badge-id { background-color: #e8f4fd; color: #2980b9; padding: 5px 10px; border-radius: 5px; font-size: 0.85em; font-weight: bold; border: 1px solid #b3d7ff; }
+        .date-text { color: #7f8c8d; font-size: 0.9em; font-weight: 500; }
+    
+        /* Couleur identique à la navbar (#2c3e50) */
+.footer-custom {
+    background-color: #2c3e50;
+    border-top: 3px solid #f39c12; /* Petit trait orange comme le menu actif */
+}
+
+/* Force le footer à rester en bas si la liste est courte */
+html, body {
+    height: 100%;
+}
+body {
+    display: flex;
+    flex-direction: column;
+}
+.container {
+    flex: 1 0 auto;
+}
+footer {
+    flex-shrink: 0;
+}
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="#"><i class="fas fa-university"></i> AcademiX</a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="formations.html">Formations</a>
+                <a class="nav-link" href="etudiants.html">Étudiants</a>
+                <a class="nav-link active fw-bold text-warning" href="inscriptions.html">Inscriptions</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="fw-bold text-secondary">Gestion des Inscriptions</h2>
+            <button class="btn btn-add shadow-sm" data-bs-toggle="modal" data-bs-target="#enrollModal" onclick="prepareAdd()">
+                <i class="fas fa-plus-circle"></i> Nouvelle Inscription
+            </button>
+        </div>
+
+        <div class="stats-card mb-3">
+    <h3>Inscriptions actives : <span id="enrollment-count">0</span></h3>
+</div>
+
+<div class="mb-3">
+    <input type="text" id="searchBar" onkeyup="doSearch()" placeholder="Rechercher par nom d'étudiant..." class="form-control" style="width: 300px;">
+</div>
+
+        <div class="card p-3">
+            <table class="table table-hover align-middle" id="enrollTable">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Étudiant (ID)</th>
+                        <th>Formation (ID)</th>
+                        <th>Date d'inscription</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="modal fade" id="enrollModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fw-bold">Inscrire un Étudiant</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="enrollForm">
+                    <div class="modal-body p-4">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-uppercase">Sélectionner l'Étudiant</label>
+                            <select id="studentSelect" class="form-select" required>
+                                <option value="">Chargement des étudiants...</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-uppercase">Sélectionner la Formation</label>
+                            <select id="formationSelect" class="form-select" required>
+                                <option value="">Chargement des formations...</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-uppercase">Date d'inscription</label>
+                            <input type="date" id="enrollDate" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-success px-4">Confirmer l'inscription</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+   <script>
+    const API_INS = "http://localhost:8083/inscriptions";
+    const API_STUD = "http://localhost:8081/students";
+    const API_FORM = "http://localhost:8082/formations";
+    
+    let allStudents = [];
+    let allFormations = [];
+    
+    const enrollModal = new bootstrap.Modal(document.getElementById('enrollModal'));
+
+    document.getElementById('enrollDate').valueAsDate = new Date();
+
+    async function loadSelects() {
+        try {
+            const [resS, resF] = await Promise.all([fetch(API_STUD), fetch(API_FORM)]);
+            allStudents = await resS.json();
+            allFormations = await resF.json();
+
+            document.getElementById('studentSelect').innerHTML = '<option value="">Choisir un étudiant</option>' + 
+                allStudents.map(s => `<option value="${s.id}">${s.firstName} ${s.lastName}</option>`).join('');
+
+            document.getElementById('formationSelect').innerHTML = '<option value="">Choisir une formation</option>' + 
+                allFormations.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
+                
+            loadEnrollments(); 
+        } catch (e) { 
+            console.error("Erreur de connexion aux services (8081 ou 8082)", e); 
+        }
+    }
+
+    async function loadEnrollments() {
+        try {
+            const res = await fetch(API_INS);
+            const data = await res.json();
+            const tbody = document.querySelector("#enrollTable tbody");
+            
+            tbody.innerHTML = data.map(ins => {
+                const student = allStudents.find(s => s.id == ins.studentId);
+                const formation = allFormations.find(f => f.id == ins.formationId);
+
+                const studentName = student ? `${student.firstName} ${student.lastName}` : `ID: ${ins.studentId}`;
+                const formationName = formation ? formation.name : `ID: ${ins.formationId}`;
+
+                return `
+                    <tr>
+                        <td><span class="text-muted small">#${ins.id}</span></td>
+                        <td><span class="badge-id"><i class="fas fa-user-graduate me-2"></i>${studentName}</span></td>
+                        <td><span class="badge-id"><i class="fas fa-book me-2"></i>${formationName}</span></td>
+                        <td class="date-text"><i class="far fa-calendar-alt me-2"></i>${new Date(ins.registrationDate).toLocaleDateString()}</td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-outline-danger border-0" onclick="deleteEnroll(${ins.id})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            
+            // AJOUT : Initialise le compteur au chargement
+            document.getElementById("enrollment-count").innerText = data.length;
+            
+        } catch (e) { 
+            console.error("Erreur microservice inscription (8083)", e); 
+        }
+    }
+
+    document.getElementById("enrollForm").onsubmit = async (e) => {
+        e.preventDefault();
+        const payload = {
+            studentId: parseInt(document.getElementById("studentSelect").value),
+            formationId: parseInt(document.getElementById("formationSelect").value),
+            registrationDate: document.getElementById("enrollDate").value,
+            moduleId: null
+        };
+
+        try {
+            const res = await fetch(API_INS, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                enrollModal.hide();
+                loadEnrollments();
+                e.target.reset();
+                document.getElementById('enrollDate').valueAsDate = new Date();
+                alert("Inscription réussie !");
+            } else {
+                const errorText = await res.text(); 
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    alert("Erreur : " + (errorJson.message || "Impossible de s'inscrire"));
+                } catch(e) {
+                    alert("Attention : " + errorText);
+                }
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Erreur de connexion au serveur.");
+        }
+    };
+
+    async function deleteEnroll(id) {
+        if(confirm("Annuler cette inscription ?")) {
+            await fetch(`${API_INS}/${id}`, { method: "DELETE" });
+            loadEnrollments();
+        }
+    }
+
+    function prepareAdd() {
+        loadSelects(); 
+    }
+
+    loadSelects();
+
+    // MODIFICATION ICI : On renomme en "doSearch" pour correspondre à votre HTML
+    function doSearch() {
+        let keyword = document.getElementById("searchBar").value.toLowerCase();
+        let rows = document.querySelectorAll("#enrollTable tbody tr");
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            let text = row.innerText.toLowerCase();
+            if (text.includes(keyword)) {
+                row.style.display = "";
+                visibleCount++;
+            } else {
+                row.style.display = "none";
+            }
+        });
+
+        // MODIFICATION ICI : On utilise l'ID "enrollment-count" qui est dans votre HTML
+        document.getElementById("enrollment-count").innerText = visibleCount;
+    }
+</script>
+<footer class="footer-custom text-white text-center py-4 mt-5">
+    <div class="container">
+        <p class="mb-0 fw-bold">Plateforme de gestion des inscriptions académiques</p>
+        <small class="opacity-75">© 2026 AcademiX </small>
+    </div>
+</footer>
+</body>
+</html>
