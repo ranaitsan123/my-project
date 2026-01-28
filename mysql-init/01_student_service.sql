@@ -14,6 +14,12 @@ SET time_zone = "+00:00";
 -- Base de données : `student_service`
 -- Table `student`
 
+-- 01_student_service.sql
+CREATE DATABASE IF NOT EXISTS student_service;
+USE student_service;
+
+-- Your table definitions and inserts from the dump...
+
 DROP TABLE IF EXISTS `student`;
 
 CREATE TABLE `student` (

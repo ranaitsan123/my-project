@@ -20,6 +20,11 @@ SET time_zone = "+00:00";
 --
 -- Base de données : `inscription_db`
 --
+-- 03_inscription_db.sql
+CREATE DATABASE IF NOT EXISTS inscription_db;
+USE inscription_db;
+
+-- Your tables and inserts from inscription_db.sql
 
 -- --------------------------------------------------------
 

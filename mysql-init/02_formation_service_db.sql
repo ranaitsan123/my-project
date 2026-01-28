@@ -20,6 +20,11 @@ SET time_zone = "+00:00";
 --
 -- Base de données : `formation_service_db`
 --
+-- 02_formation_service_db.sql
+CREATE DATABASE IF NOT EXISTS formation_service_db;
+USE formation_service_db;
+
+-- Your tables and inserts from formation_service_db.sql
 
 -- --------------------------------------------------------
 
