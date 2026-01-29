@@ -57,6 +57,24 @@ services:
     networks:
       - microservices-net
 
+  auth-service:
+    build: ./auth-service
+    container_name: auth-service
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/auth_service
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      JWT_SECRET: MySuperSecretKeyForJWTs1234567890
+      JWT_EXPIRATION_MS: 3600000
+    ports:
+      - "8090:8080"
+    networks:
+      - microservices-net
+
   gateway:
     image: nginx:alpine
     container_name: api-gateway
@@ -69,6 +87,7 @@ services:
       - student-service
       - formation-service
       - inscription-service
+      - auth-service
     networks:
       - microservices-net
 
