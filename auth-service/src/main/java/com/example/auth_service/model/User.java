@@ -24,7 +24,7 @@ public class User {
     @Column(unique = true, nullable = false)
     private String email;
 
-    @Column(name = "is_enabled")
+    @Column(name = "is_enabled", columnDefinition = "TINYINT(1)")
     private boolean enabled = true;
 
     @Column(name = "created_at")
