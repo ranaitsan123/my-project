@@ -47,9 +47,39 @@ footer {
                 <a class="nav-link" href="formations.html">Formations</a>
                 <a class="nav-link" href="etudiants.html">Étudiants</a>
                 <a class="nav-link active fw-bold text-warning" href="inscriptions.html">Inscriptions</a>
+                <span class="nav-link" style="color: #fff; margin: 0 10px;">|</span>
+                <span class="nav-link" id="userDisplay" style="color: #fff;"></span>
+                <button class="btn btn-sm btn-danger ms-2" onclick="handleLogout()"><i class="fas fa-sign-out-alt"></i> Déconnexion</button>
             </div>
         </div>
     </nav>
+
+    <script>
+        function checkAuth() {
+            const token = localStorage.getItem('authToken');
+            const user = localStorage.getItem('loggedInUser');
+            if (!token || !user) {
+                window.location.href = 'auth.html';
+                return;
+            }
+            const userDisplay = document.getElementById('userDisplay');
+            if (userDisplay) {
+                userDisplay.textContent = '👤 ' + user;
+            }
+        }
+        function handleLogout() {
+            if (confirm('Êtes-vous sûr de vouloir vous déconnecter?')) {
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('loggedInUser');
+                window.location.href = 'auth.html';
+            }
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', checkAuth);
+        } else {
+            checkAuth();
+        }
+    </script>
 
     <div class="container">
         <div class="d-flex justify-content-between align-items-center mb-4">

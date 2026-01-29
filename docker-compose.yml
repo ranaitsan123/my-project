@@ -68,7 +68,7 @@ services:
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: root
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
-      JWT_SECRET: MySuperSecretKeyForJWTs1234567890
+      JWT_SECRET: b3d9f7a6c5e4d3c2b1a0f9e8d7c6b5a4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8b3d9f7a6c5e4d3c2b1a0f9e8d7c6b5a4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8
       JWT_EXPIRATION_MS: 3600000
     ports:
       - "8090:8080"
