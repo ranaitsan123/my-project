@@ -1,6 +1,7 @@
 package com.university.inscription_service.service;
 
 import com.university.inscription_service.entity.Inscription;
+import com.university.inscription_service.repository.InscriptionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
@@ -18,39 +19,36 @@ import org.slf4j.LoggerFactory; // <-- C'est cette ligne qui corrige le rouge
 public class InscriptionValidationService {
 
     private final RestTemplate restTemplate;
+    private final InscriptionRepository inscriptionRepository;
     private static final Logger logger = LoggerFactory.getLogger(InscriptionValidationService.class);
 
-    public InscriptionValidationService() {
+    public InscriptionValidationService(InscriptionRepository inscriptionRepository) {
         this.restTemplate = new RestTemplate();
+        this.inscriptionRepository = inscriptionRepository;
     }
 
     // --- FORMATION ---
     @CircuitBreaker(name = "formationService", fallbackMethod = "fallbackIsFormationFull")
 public boolean isFormationFull(Long formationId) {
-    try {
-        // 1. Récupérer les détails de la formation
-        String formationUrl = "http://localhost:8082/formations/" + formationId;
-        FormationDTO formation = restTemplate.getForObject(formationUrl, FormationDTO.class);
+        try {
+            // 1. Récupérer les détails de la formation via le service formation (utilise le nom du service Docker)
+            String formationUrl = "http://formation-service:8080/formations/" + formationId;
+            FormationDTO formation = restTemplate.getForObject(formationUrl, FormationDTO.class);
 
-        if (formation == null) {
-            logger.warn("Formation {} introuvable, on bloque l'inscription.", formationId);
-            return true; 
-        }
+            if (formation == null) {
+                logger.warn("Formation {} introuvable, on bloque l'inscription.", formationId);
+                return true;
+            }
 
-        // 2. Compter les inscriptions existantes (Utilisation de List.class pour plus de fiabilité)
-        String inscriptionsUrl = "http://localhost:8083/inscriptions/formation/" + formationId;
-        List<?> currentInscriptions = restTemplate.getForObject(inscriptionsUrl, List.class);
-        
-        int currentCount = (currentInscriptions != null) ? currentInscriptions.size() : 0;
-        int maxPlaces = formation.getMaxStudents();
+            // 2. Compter les inscriptions existantes via le repository local
+            int currentCount = inscriptionRepository.findByFormationId(formationId).size();
+            int maxPlaces = formation.getMaxStudents();
 
-        // LOG DE DEBUG : Très important pour vous
-        logger.info("VÉRIFICATION : Formation {} -> {}/{} places occupées", formationId, currentCount, maxPlaces);
+            logger.info("VÉRIFICATION : Formation {} -> {}/{} places occupées", formationId, currentCount, maxPlaces);
 
-        return currentCount >= maxPlaces;
-    } catch (Exception e) {
-        // Cette erreur sera captée par le Circuit Breaker qui appellera le fallback
-            throw e; 
+            return currentCount >= maxPlaces;
+        } catch (Exception e) {
+            throw e;
         }
     }
 
@@ -67,22 +65,18 @@ public boolean isFormationFull(Long formationId) {
 
 @CircuitBreaker(name = "formationService", fallbackMethod = "fallbackIsModuleFull")
 public boolean isModuleFull(Long moduleId) {
-    try {
-        String moduleUrl = "http://localhost:8082/modules/" + moduleId;
-        ModuleDTO module = restTemplate.getForObject(moduleUrl, ModuleDTO.class);
+        try {
+            String moduleUrl = "http://formation-service:8080/modules/" + moduleId;
+            ModuleDTO module = restTemplate.getForObject(moduleUrl, ModuleDTO.class);
 
-        if (module == null) return true;
+            if (module == null) return true;
 
-        String inscriptionsUrl = "http://localhost:8083/inscriptions/module/" + moduleId;
-        List<?> currentInscriptions = restTemplate.getForObject(inscriptionsUrl, List.class);
-        
-        int currentCount = (currentInscriptions != null) ? currentInscriptions.size() : 0;
-        
-        logger.info("VÉRIFICATION : Module {} -> {}/{} places occupées", moduleId, currentCount, module.getMaxStudents());
+            int currentCount = inscriptionRepository.findByModuleId(moduleId).size();
 
-        return currentCount >= module.getMaxStudents();
-    } catch (Exception e) {
-      
+            logger.info("VÉRIFICATION : Module {} -> {}/{} places occupées", moduleId, currentCount, module.getMaxStudents());
+
+            return currentCount >= module.getMaxStudents();
+        } catch (Exception e) {
             throw e;
         }
     }
@@ -98,12 +92,11 @@ public boolean isModuleFull(Long moduleId) {
 
     // --- ÉTUDIANT ---
 @CircuitBreaker(name = "studentService", fallbackMethod = "fallbackStudentExists")
-public boolean studentExists(Long studentId) {
-    String studentUrl = "http://localhost:8081/students/" + studentId;
-    // On tente de récupérer l'étudiant. Si le service renvoie 200 OK, il existe.
-    ResponseEntity<Object> response = restTemplate.getForEntity(studentUrl, Object.class);
-    return response.getStatusCode().is2xxSuccessful();
-}
+    public boolean studentExists(Long studentId) {
+        String studentUrl = "http://student-service:8080/students/" + studentId;
+        ResponseEntity<Object> response = restTemplate.getForEntity(studentUrl, Object.class);
+        return response.getStatusCode().is2xxSuccessful();
+    }
 
 public boolean fallbackStudentExists(Long studentId, Throwable t) {
     logger.error("Le service Étudiant est injoignable pour l'ID {}. Cause: {}", studentId, t.getMessage());

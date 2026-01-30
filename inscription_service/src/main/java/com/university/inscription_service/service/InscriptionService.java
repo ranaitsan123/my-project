@@ -61,17 +61,17 @@ public Inscription createInscription(Inscription inscription) {
 
     // Vérifier les prérequis
    String prereq = "";
-if(inscription.getModuleId() != null) {
-    // Appel au microservice module pour récupérer les prérequis
-    String moduleUrl = "http://localhost:8082/modules/" + inscription.getModuleId();
-    ModuleDTO module = new RestTemplate().getForObject(moduleUrl, ModuleDTO.class);
-    prereq = module != null ? module.getPrerequisites() : "";
-} else {
-    // Appel au microservice formation pour récupérer les prérequis
-    String formationUrl = "http://localhost:8082/formations/" + inscription.getFormationId();
-    FormationDTO formation = new RestTemplate().getForObject(formationUrl, FormationDTO.class);
-    prereq = formation != null ? formation.getPrerequisites() : "";
-}
+    if(inscription.getModuleId() != null) {
+        // Appel au microservice module (nom du service Docker)
+        String moduleUrl = "http://formation-service:8080/modules/" + inscription.getModuleId();
+        ModuleDTO module = new RestTemplate().getForObject(moduleUrl, ModuleDTO.class);
+        prereq = module != null ? module.getPrerequisites() : "";
+    } else {
+        // Appel au microservice formation (nom du service Docker)
+        String formationUrl = "http://formation-service:8080/formations/" + inscription.getFormationId();
+        FormationDTO formation = new RestTemplate().getForObject(formationUrl, FormationDTO.class);
+        prereq = formation != null ? formation.getPrerequisites() : "";
+    }
 
 
     if(!validationService.hasPrerequisites(inscription.getStudentId(), prereq))
