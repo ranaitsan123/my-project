@@ -1,9 +1,23 @@
-# 🎓 Microservices Backend Project (Spring Boot + Docker)
+# My Project
 
-This project is a **microservices-based backend architecture** built with **Spring Boot**, **MySQL**, **Docker**, and **Nginx** as an API Gateway.  
-It manages students, formations, inscriptions, and authentication using separate services.
+A small microservice example for university management (students, formations, inscriptions) with an authentication service and a simple static frontend — built with Spring Boot, MySQL and Docker.
+
+## Table of contents
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Quick start (Docker)](#quick-start-docker)
+- [Local development](#local-development)
+- [Running tests](#running-tests)
+- [Useful docs](#useful-docs)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
 
 ---
+
+## Overview
+This repository demonstrates a compact microservices architecture (auth, student, formation, inscription) with a static frontend and a MySQL backend initialized from SQL scripts in `mysql-init/`.
+
+## Architecture
 
 ## 🧱 Architecture Overview
 
